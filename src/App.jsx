@@ -61,6 +61,46 @@ const focusOptions = [
   { value: 'shoulders', label: 'Shoulders', icon: '🤸' },
 ]
 
+const exerciseGuides = {
+  'Back Squat': 'Drive through your heels and brace your core.',
+  'Romanian Deadlift': 'Keep your spine neutral and hinge at the hips.',
+  'Walking Lunges': 'Step long and control each rep.',
+  'Leg Press': 'Lower slowly and push through the full range.',
+  'Seated Calf Raise': 'Pause at the top for a strong squeeze.',
+  Plank: 'Keep your body in one straight line.',
+  'Bench Press': 'Lower the bar to your chest with control.',
+  'Incline Dumbbell Press': 'Press up while keeping your chest lifted.',
+  'Chest Fly': 'Open wide and squeeze the chest at the top.',
+  'Push-Ups': 'Keep your elbows at about 45 degrees.',
+  'Cable Crossover': 'Focus on the stretch and squeeze.',
+  'Dead Bug': 'Move slowly and keep your lower back grounded.',
+  'Pull-Ups': 'Pull your elbows down and avoid swinging.',
+  'Lat Pulldown': 'Pull the bar to your upper chest.',
+  'Bent-Over Row': 'Lead with your elbows and keep your torso stable.',
+  'Seated Cable Row': 'Squeeze your shoulder blades together.',
+  'Face Pull': 'Pull toward your forehead with control.',
+  'Farmer Carry': 'Walk tall and keep the weight close.',
+  'Barbell Curl': 'Curl without letting your shoulders move.',
+  'Hammer Curl': 'Keep your wrists neutral and steady.',
+  'Incline Dumbbell Curl': 'Use a full range and avoid swinging.',
+  'Preacher Curl': 'Stay strict and focus on the biceps.',
+  'Cable Curl': 'Keep tension on the muscle throughout.',
+  'Reverse Curl': 'Use a slow tempo and control the descent.',
+  'Hanging Leg Raise': 'Lift from the hips and lower with control.',
+  'Crunch Machine': 'Move through a full range without rushing.',
+  'Cable Woodchop': 'Rotate through your torso and brace your core.',
+  'Russian Twist': 'Keep your chest tall and rotate smoothly.',
+  'Ab Wheel Rollout': 'Roll out slowly and keep your core tight.',
+  'Side Plank': 'Stack your hips and hold steady.',
+  'Overhead Press': 'Press overhead without arching your back.',
+  'Lateral Raise': 'Lift to shoulder height and avoid shrugging.',
+  'Front Raise': 'Raise to shoulder height with control.',
+  'Rear Delt Fly': 'Open your chest and squeeze your upper back.',
+  'Arnold Press': 'Rotate through the press for smooth range.',
+}
+
+const getExerciseGuide = (exerciseName) => exerciseGuides[exerciseName] || 'Focus on form and controlled tempo.'
+
 const defaultProfile = {
   age: 28,
   height: 168,
@@ -70,6 +110,8 @@ const defaultProfile = {
 }
 
 const createWorkoutProgress = () => Object.fromEntries(Object.keys(workoutTemplates).map((key) => [key, Array(6).fill(false)]))
+
+const formatDateLabel = (date = new Date()) => date.toLocaleDateString('en', { weekday: 'short', month: 'short', day: 'numeric' })
 
 const buildInitialUser = (name, email, password) => ({
   id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}`,
@@ -82,6 +124,7 @@ const buildInitialUser = (name, email, password) => ({
   meals: [],
   hydration: 0,
   progressHistory: [35, 55, 70, 60, 80, 90, 100],
+  progressLog: [],
 })
 
 const readStoredUsers = () => {
@@ -101,9 +144,12 @@ function App() {
   const [currentUser, setCurrentUser] = useState(readStoredSession)
   const [authMode, setAuthMode] = useState('login')
   const [authForm, setAuthForm] = useState({ name: '', email: '', password: '' })
-  const [mealForm, setMealForm] = useState({ name: '', calories: '', type: 'Breakfast' })
+  const [mealForm, setMealForm] = useState({ name: '', calories: '', quantity: '1', type: 'Breakfast' })
+  const [mealLookupHint, setMealLookupHint] = useState('')
+  const [exerciseImages, setExerciseImages] = useState({})
   const [message, setMessage] = useState('')
 
+  const todayLabel = formatDateLabel()
   const profile = currentUser?.profile ?? defaultProfile
   const activeFocus = currentUser?.selectedFocus ?? 'legs'
   const workoutProgress = currentUser?.workouts ?? createWorkoutProgress()
@@ -129,6 +175,71 @@ function App() {
     if (!currentUser) return
     setUsers((previous) => previous.map((user) => (user.id === currentUser.id ? currentUser : user)))
   }, [currentUser])
+
+  const getLocalExerciseImage = (exerciseName) => {
+    if (!exerciseName?.trim()) return null
+
+    const palette = ['#2563eb', '#7c3aed', '#0f766e', '#dc2626', '#ea580c', '#db2777', '#0891b2', '#16a34a']
+    const accent = palette[exerciseName.length % palette.length]
+    const accent2 = palette[(exerciseName.length + 3) % palette.length]
+    const icon = exerciseName.split(' ').slice(0, 2).map((word) => word[0]).join('').toUpperCase() || 'EX'
+
+    return `data:image/svg+xml;utf8,${encodeURIComponent(`
+      <svg xmlns="http://www.w3.org/2000/svg" width="220" height="180" viewBox="0 0 220 180">
+        <rect width="220" height="180" rx="30" fill="#07111f"/>
+        <rect x="18" y="18" width="184" height="144" rx="24" fill="url(#g)"/>
+        <circle cx="72" cy="74" r="30" fill="#ffffff" opacity="0.2"/>
+        <circle cx="148" cy="74" r="30" fill="#ffffff" opacity="0.14"/>
+        <rect x="58" y="92" width="104" height="40" rx="18" fill="#ffffff" opacity="0.9"/>
+        <path d="M92 112c8-16 28-16 36 0" stroke="${accent2}" stroke-width="8" stroke-linecap="round"/>
+        <path d="M78 66c10-20 34-20 44 0" stroke="#ffffff" stroke-width="8" stroke-linecap="round"/>
+        <path d="M132 66c10-20 34-20 44 0" stroke="#ffffff" stroke-width="8" stroke-linecap="round" opacity="0.8"/>
+        <circle cx="110" cy="60" r="16" fill="#ffffff" opacity="0.95"/>
+        <text x="110" y="152" text-anchor="middle" font-family="Arial, sans-serif" font-size="13" font-weight="700" fill="white">${exerciseName}</text>
+        <text x="110" y="40" text-anchor="middle" font-family="Arial, sans-serif" font-size="20" font-weight="700" fill="white">${icon}</text>
+      </svg>
+    `)}`
+  }
+
+  const fetchExerciseImage = async (exerciseName) => {
+    if (!exerciseName?.trim()) return null
+
+    try {
+      const response = await fetch(`/api/exercise-image?name=${encodeURIComponent(exerciseName.trim())}`)
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error || 'Unable to load exercise image.')
+      return data.imageUrl || null
+    } catch (error) {
+      return getLocalExerciseImage(exerciseName)
+    }
+  }
+
+  useEffect(() => {
+    let cancelled = false
+
+    const initialImages = Object.fromEntries(
+      activeWorkoutList.map((item) => [item.name, getLocalExerciseImage(item.name)]),
+    )
+    setExerciseImages(initialImages)
+
+    const loadImages = async () => {
+      for (const item of activeWorkoutList) {
+        const resolvedImage = await fetchExerciseImage(item.name)
+        if (cancelled) return
+
+        setExerciseImages((previous) => ({
+          ...previous,
+          [item.name]: resolvedImage || previous[item.name] || getLocalExerciseImage(item.name),
+        }))
+      }
+    }
+
+    loadImages()
+
+    return () => {
+      cancelled = true
+    }
+  }, [activeWorkoutList])
 
   const bmi = useMemo(() => {
     const heightInMeters = profile.height / 100
@@ -230,32 +341,84 @@ function App() {
     const nextCompleted = activeCompleted.map((item, itemIndex) => (itemIndex === index ? !item : item))
     const nextProgress = Math.round((nextCompleted.filter(Boolean).length / nextCompleted.length) * 100)
     const nextHistory = [...(currentUser?.progressHistory ?? [35, 55, 70, 60, 80, 90, 100]), nextProgress].slice(-7)
+    const today = new Date().toISOString().slice(0, 10)
+    const existingLog = currentUser?.progressLog ?? []
+    const nextLog = existingLog.filter((entry) => entry.date !== today)
+    nextLog.push({ date: today, percent: nextProgress, focus: activeFocus })
 
     updateCurrentUser({
       workouts: { ...workoutProgress, [activeFocus]: nextCompleted },
       progressHistory: nextHistory,
+      progressLog: nextLog.slice(-7),
     })
   }
 
-  const handleMealSubmit = (event) => {
-    event.preventDefault()
-    const calories = Number(mealForm.calories)
+  const fetchCaloriesFromOpenAI = async (mealName) => {
+    if (!mealName?.trim()) return null
 
-    if (!mealForm.name.trim() || Number.isNaN(calories) || calories <= 0) {
-      setMessage('Add a meal name and a valid calorie amount.')
+    try {
+      const response = await fetch('/api/estimate-calories', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mealName: mealName.trim() }),
+      })
+
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error || 'Unable to estimate calories.')
+      return Number(data.calories)
+    } catch (error) {
+      return null
+    }
+  }
+
+  const handleMealNameChange = async (event) => {
+    const nextName = event.target.value
+
+    setMealForm((current) => ({ ...current, name: nextName }))
+
+    if (!nextName.trim()) {
+      setMealLookupHint('')
+      return
+    }
+
+    const estimatedCalories = await fetchCaloriesFromOpenAI(nextName)
+    if (estimatedCalories) {
+      setMealForm((current) => ({
+        ...current,
+        calories: current.calories !== '' && current.calories !== null && current.calories !== undefined
+          ? current.calories
+          : estimatedCalories,
+      }))
+      setMealLookupHint(`Auto-detected about ${estimatedCalories} kcal for ${nextName.trim()}.`)
+    } else {
+      setMealLookupHint('')
+    }
+  }
+
+  const handleMealSubmit = async (event) => {
+    event.preventDefault()
+    const normalizedMealName = mealForm.name.trim()
+    const quantity = Number(mealForm.quantity) || 1
+    const baseCalories = Number(mealForm.calories) || (await fetchCaloriesFromOpenAI(normalizedMealName)) || 0
+    const resolvedCalories = Math.round(baseCalories * quantity)
+
+    if (!normalizedMealName || Number.isNaN(baseCalories) || baseCalories <= 0 || quantity <= 0) {
+      setMessage('Add a meal name and a valid quantity so calories can be calculated.')
       return
     }
 
     const nextMeal = {
       id: `${Date.now()}`,
-      name: mealForm.name.trim(),
-      calories,
+      name: normalizedMealName,
+      calories: resolvedCalories,
+      quantity,
       type: mealForm.type,
     }
 
     updateCurrentUser({ meals: [...meals, nextMeal] })
-    setMealForm({ name: '', calories: '', type: mealForm.type })
-    setMessage(`Added ${nextMeal.name} to your plan.`)
+    setMealForm({ name: '', calories: '', quantity: '1', type: mealForm.type })
+    setMealLookupHint('')
+    setMessage(`Added ${nextMeal.name} x${nextMeal.quantity} — ${nextMeal.calories} kcal.`)
   }
 
   const addWater = (amount) => {
@@ -273,6 +436,7 @@ function App() {
       <header className="hero-card">
         <div>
           <p className="eyebrow">FitUP</p>
+          <div className="hero-date">{todayLabel}</div>
           <h1>Train smarter with your daily gym plan.</h1>
           <p className="hero-copy">
             Choose your muscle group, complete your gym routine, track reps, and stay on top of hydration and nutrition in one clean space.
@@ -413,9 +577,17 @@ function App() {
                   <li key={item.name} className={activeCompleted[index] ? 'done' : ''}>
                     <label>
                       <input type="checkbox" checked={activeCompleted[index]} onChange={() => toggleWorkout(index)} />
-                      <div>
-                        <strong>{item.name}</strong>
-                        <p>{item.focus}</p>
+                      <div className="exercise-content">
+                        {exerciseImages[item.name] ? (
+                          <img className="exercise-thumbnail" src={exerciseImages[item.name]} alt={item.name} />
+                        ) : (
+                          <div className="exercise-thumbnail placeholder">🏋️</div>
+                        )}
+                        <div className="exercise-meta">
+                          <strong>{item.name}</strong>
+                          <p>{item.focus}</p>
+                          <span className="exercise-guide">{getExerciseGuide(item.name)}</span>
+                        </div>
                       </div>
                     </label>
                     <span>{item.reps}</span>
@@ -467,13 +639,20 @@ function App() {
                   type="text"
                   placeholder="Meal name"
                   value={mealForm.name}
-                  onChange={(event) => setMealForm((current) => ({ ...current, name: event.target.value }))}
+                  onChange={handleMealNameChange}
                 />
                 <input
                   type="number"
-                  placeholder="Calories"
+                  placeholder="Leave blank for auto fetch"
                   value={mealForm.calories}
                   onChange={(event) => setMealForm((current) => ({ ...current, calories: event.target.value }))}
+                />
+                <input
+                  type="number"
+                  min="1"
+                  placeholder="Qty"
+                  value={mealForm.quantity}
+                  onChange={(event) => setMealForm((current) => ({ ...current, quantity: event.target.value }))}
                 />
                 <select
                   value={mealForm.type}
@@ -486,10 +665,15 @@ function App() {
                 </select>
                 <button type="submit">Add meal</button>
               </form>
+              {mealLookupHint ? <p className="message">{mealLookupHint}</p> : null}
+              <p className="message">Try foods like banana, chicken breast, apple, pasta, or rice.</p>
               <ul className="meal-list">
                 {meals.slice().reverse().map((meal) => (
                   <li key={meal.id}>
-                    <span>{meal.name}</span>
+                    <span>
+                      {meal.name}
+                      {meal.quantity > 1 ? ` x${meal.quantity}` : ''}
+                    </span>
                     <strong>{meal.calories} kcal</strong>
                   </li>
                 ))}
